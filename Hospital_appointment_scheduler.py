@@ -1,6 +1,6 @@
 from datetime import datetime
 
-# Store all appointments
+#Store all appointments
 appointments = {}
 
 # Starting appointment ID
