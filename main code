@@ -1,0 +1,111 @@
+"""
+Hospital Appointment Scheduler - PS No. 79
+Rungta International Skills University
+Language: Python 3 | Concepts: Dictionaries, Datetime, Functions, CRUD
+"""
+
+from datetime import datetime
+
+# Dictionary to store appointments: { ID: {patient, doctor, date, time} }
+appointments = {}
+next_id = 101  # First ID will be A101
+
+DOCTORS = ["Dr. Mehta", "Dr. Rao"]
+
+def generate_id():
+    """Auto-generate appointment ID like A101, A102..."""
+    global next_id
+    appt_id = f"A{next_id}"
+    next_id += 1
+    return appt_id
+
+def validate_datetime(date_str, time_str):
+    """
+    Returns (datetime_obj, error_message)
+    Validates date as DD-MM-YYYY and time as HH:MM, 30-min slots 09:00 to 16:30
+    """
+    try:
+        dt = datetime.strptime(f"{date_str} {time_str}", "%d-%m-%Y %H:%M")
+    except ValueError:
+        # Check if date itself is invalid like 31-11-2026
+        try:
+            datetime.strptime(date_str, "%d-%m-%Y")
+        except ValueError:
+            return None, "Invalid date. Please enter the date as DD-MM-YYYY."
+        return None, "Invalid time. Please enter the time as HH:MM."
+
+    # Check working hours 09:00 to 16:30
+    total_minutes = dt.hour * 60 + dt.minute
+    if total_minutes < 9 * 60 or total_minutes > 16 * 60 + 30:
+        return None, "Invalid time. Slots are available from 09:00 to 16:30 only."
+
+    # Check 30-minute slot
+    if dt.minute not in (0, 30):
+        return None, "Invalid time. Only 30-minute slots are allowed (e.g. 10:00, 10:30)."
+
+    return dt, None
+
+def is_slot_available(doctor, dt, exclude_id=None):
+    """Check if doctor already has appointment at same date-time"""
+    for appt_id, details in appointments.items():
+        if appt_id == exclude_id:
+            continue
+        if details["doctor"] == doctor and details["datetime"] == dt:
+            return False
+    return True
+
+def book_appointment():
+    print("\n--- Book Appointment ---")
+    patient = input("Patient: ").strip()
+    doctor = input("Doctor: ").strip()
+    date_str = input("Date: ").strip()  # DD-MM-YYYY
+    time_str = input("Time: ").strip()  # HH:MM
+
+    if doctor not in DOCTORS:
+        print(f"Invalid doctor. Available doctors: {', '.join(DOCTORS)}")
+        return
+
+    dt, error = validate_datetime(date_str, time_str)
+    if error:
+        print(error)
+        return
+
+    if not is_slot_available(doctor, dt):
+        print(f"Slot unavailable: {doctor} already has an appointment on {date_str} at {time_str}.")
+        return
+
+    appt_id = generate_id()
+    appointments[appt_id] = {
+        "patient": patient,
+        "doctor": doctor,
+        "datetime": dt,
+        "date_str": date_str,
+        "time_str": time_str
+    }
+    print(f"Appointment booked. ID: {appt_id} | {patient} | {doctor} | {date_str} {time_str}")
+
+def view_all():
+    print("\n--- All Appointments ---")
+    if not appointments:
+        print("No appointments found.")
+    else:
+        for appt_id, details in appointments.items():
+            print(f"{appt_id} | {details['patient']} | {details['doctor']} | {details['date_str']} {details['time_str']}")
+    print(f"Total appointments: {len(appointments)}")
+
+def reschedule_appointment():
+    print("\n--- Reschedule Appointment ---")
+    appt_id = input("Enter Appointment ID: ").strip().upper()
+    if appt_id not in appointments:
+        print("Appointment ID not found.")
+        return
+
+    date_str = input("New date (DD-MM-YYYY): ").strip()
+    time_str = input("New time (HH:MM): ").strip()
+
+    dt, error = validate_datetime(date_str, time_str)
+    if error:
+        print(error)
+        return
+
+    doctor = appointments[appt_id]
