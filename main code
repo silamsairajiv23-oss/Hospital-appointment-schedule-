@@ -1,111 +1,303 @@
-"""
-Hospital Appointment Scheduler - PS No. 79
-Rungta International Skills University
-Language: Python 3 | Concepts: Dictionaries, Datetime, Functions, CRUD
-"""
-
 from datetime import datetime
 
-# Dictionary to store appointments: { ID: {patient, doctor, date, time} }
+# Store all appointments
 appointments = {}
-next_id = 101  # First ID will be A101
 
-DOCTORS = ["Dr. Mehta", "Dr. Rao"]
+# Starting appointment ID
+next_appointment_number = 101
 
-def generate_id():
-    """Auto-generate appointment ID like A101, A102..."""
-    global next_id
-    appt_id = f"A{next_id}"
-    next_id += 1
-    return appt_id
+# Clinic timings
+CLINIC_START = "09:00"
+CLINIC_END = "16:30"
 
-def validate_datetime(date_str, time_str):
-    """
-    Returns (datetime_obj, error_message)
-    Validates date as DD-MM-YYYY and time as HH:MM, 30-min slots 09:00 to 16:30
-    """
+
+def generate_appointment_id():
+    """Generate a new appointment ID such as A101, A102, A103."""
+    global next_appointment_number
+
+    appointment_id = f"A{next_appointment_number}"
+    next_appointment_number += 1
+
+    return appointment_id
+
+
+def validate_date(date):
+    """Check whether the date follows DD-MM-YYYY format."""
     try:
-        dt = datetime.strptime(f"{date_str} {time_str}", "%d-%m-%Y %H:%M")
-    except ValueError:
-        # Check if date itself is invalid like 31-11-2026
-        try:
-            datetime.strptime(date_str, "%d-%m-%Y")
-        except ValueError:
-            return None, "Invalid date. Please enter the date as DD-MM-YYYY."
-        return None, "Invalid time. Please enter the time as HH:MM."
+        appointment_date = datetime.strptime(date, "%d-%m-%Y")
 
-    # Check working hours 09:00 to 16:30
-    total_minutes = dt.hour * 60 + dt.minute
-    if total_minutes < 9 * 60 or total_minutes > 16 * 60 + 30:
-        return None, "Invalid time. Slots are available from 09:00 to 16:30 only."
-
-    # Check 30-minute slot
-    if dt.minute not in (0, 30):
-        return None, "Invalid time. Only 30-minute slots are allowed (e.g. 10:00, 10:30)."
-
-    return dt, None
-
-def is_slot_available(doctor, dt, exclude_id=None):
-    """Check if doctor already has appointment at same date-time"""
-    for appt_id, details in appointments.items():
-        if appt_id == exclude_id:
-            continue
-        if details["doctor"] == doctor and details["datetime"] == dt:
+        if appointment_date.date() < datetime.now().date():
+            print("Error: Appointment date cannot be in the past.")
             return False
+
+        return True
+
+    except ValueError:
+        print("Error: Invalid date format.")
+        print("Please use DD-MM-YYYY.")
+        return False
+
+
+def validate_time(time):
+    """Check whether the time follows HH:MM format and is within clinic hours."""
+    try:
+        appointment_time = datetime.strptime(time, "%H:%M").time()
+        start_time = datetime.strptime(CLINIC_START, "%H:%M").time()
+        end_time = datetime.strptime(CLINIC_END, "%H:%M").time()
+
+        if appointment_time < start_time or appointment_time > end_time:
+            print(
+                f"Error: Appointment time must be between "
+                f"{CLINIC_START} and {CLINIC_END}."
+            )
+            return False
+
+        # Check that appointments are on 30-minute intervals
+        if appointment_time.minute not in [0, 30]:
+            print("Error: Appointment time must be in 30-minute intervals.")
+            print("Example: 09:00, 09:30, 10:00, 10:30")
+            return False
+
+        return True
+
+    except ValueError:
+        print("Error: Invalid time format.")
+        print("Please use HH:MM.")
+        return False
+
+
+def doctor_slot_available(doctor_name, date, time, exclude_id=None):
+    """Check whether a doctor already has an appointment at the selected slot."""
+
+    for appointment_id, appointment in appointments.items():
+
+        if appointment_id == exclude_id:
+            continue
+
+        if (
+            appointment["doctor_name"].lower() == doctor_name.lower()
+            and appointment["date"] == date
+            and appointment["time"] == time
+        ):
+            return False
+
     return True
 
+
 def book_appointment():
-    print("\n--- Book Appointment ---")
-    patient = input("Patient: ").strip()
-    doctor = input("Doctor: ").strip()
-    date_str = input("Date: ").strip()  # DD-MM-YYYY
-    time_str = input("Time: ").strip()  # HH:MM
+    """Book a new appointment."""
 
-    if doctor not in DOCTORS:
-        print(f"Invalid doctor. Available doctors: {', '.join(DOCTORS)}")
+    print("\n========== BOOK APPOINTMENT ==========")
+
+    patient_name = input("Enter patient name: ").strip()
+
+    if not patient_name:
+        print("Error: Patient name cannot be empty.")
         return
 
-    dt, error = validate_datetime(date_str, time_str)
-    if error:
-        print(error)
+    doctor_name = input("Enter doctor name: ").strip()
+
+    if not doctor_name:
+        print("Error: Doctor name cannot be empty.")
         return
 
-    if not is_slot_available(doctor, dt):
-        print(f"Slot unavailable: {doctor} already has an appointment on {date_str} at {time_str}.")
+    # Get and validate date
+    while True:
+        date = input("Enter appointment date (DD-MM-YYYY): ").strip()
+
+        if validate_date(date):
+            break
+
+    # Get and validate time
+    while True:
+        time = input("Enter appointment time (HH:MM): ").strip()
+
+        if validate_time(time):
+            break
+
+    # Check doctor availability
+    if not doctor_slot_available(doctor_name, date, time):
+        print("\nAppointment cannot be booked.")
+        print("The doctor already has an appointment at this date and time.")
         return
 
-    appt_id = generate_id()
-    appointments[appt_id] = {
-        "patient": patient,
-        "doctor": doctor,
-        "datetime": dt,
-        "date_str": date_str,
-        "time_str": time_str
+    # Generate appointment ID
+    appointment_id = generate_appointment_id()
+
+    # Store appointment
+    appointments[appointment_id] = {
+        "patient_name": patient_name,
+        "doctor_name": doctor_name,
+        "date": date,
+        "time": time
     }
-    print(f"Appointment booked. ID: {appt_id} | {patient} | {doctor} | {date_str} {time_str}")
 
-def view_all():
-    print("\n--- All Appointments ---")
+    print("\n======================================")
+    print("Appointment booked successfully!")
+    print(f"Appointment ID : {appointment_id}")
+    print(f"Patient Name   : {patient_name}")
+    print(f"Doctor Name    : {doctor_name}")
+    print(f"Date           : {date}")
+    print(f"Time           : {time}")
+    print("======================================")
+
+
+def view_appointments():
+    """Display all appointments."""
+
+    print("\n========== VIEW APPOINTMENTS ==========")
+
     if not appointments:
         print("No appointments found.")
-    else:
-        for appt_id, details in appointments.items():
-            print(f"{appt_id} | {details['patient']} | {details['doctor']} | {details['date_str']} {details['time_str']}")
-    print(f"Total appointments: {len(appointments)}")
+        return
+
+    for appointment_id, appointment in appointments.items():
+        print("\n--------------------------------------")
+        print(f"Appointment ID : {appointment_id}")
+        print(f"Patient Name   : {appointment['patient_name']}")
+        print(f"Doctor Name    : {appointment['doctor_name']}")
+        print(f"Date           : {appointment['date']}")
+        print(f"Time           : {appointment['time']}")
+        print("--------------------------------------")
+
 
 def reschedule_appointment():
-    print("\n--- Reschedule Appointment ---")
-    appt_id = input("Enter Appointment ID: ").strip().upper()
-    if appt_id not in appointments:
-        print("Appointment ID not found.")
+    """Reschedule an existing appointment."""
+
+    print("\n========== RESCHEDULE APPOINTMENT ==========")
+
+    if not appointments:
+        print("No appointments available to reschedule.")
         return
 
-    date_str = input("New date (DD-MM-YYYY): ").strip()
-    time_str = input("New time (HH:MM): ").strip()
+    appointment_id = input("Enter appointment ID: ").strip().upper()
 
-    dt, error = validate_datetime(date_str, time_str)
-    if error:
-        print(error)
+    if appointment_id not in appointments:
+        print("Error: Appointment ID not found.")
         return
 
-    doctor = appointments[appt_id]
+    appointment = appointments[appointment_id]
+
+    print("\nCurrent Appointment Details")
+    print("--------------------------------------")
+    print(f"Patient : {appointment['patient_name']}")
+    print(f"Doctor  : {appointment['doctor_name']}")
+    print(f"Date    : {appointment['date']}")
+    print(f"Time    : {appointment['time']}")
+
+    # New date
+    while True:
+        new_date = input("\nEnter new date (DD-MM-YYYY): ").strip()
+
+        if validate_date(new_date):
+            break
+
+    # New time
+    while True:
+        new_time = input("Enter new time (HH:MM): ").strip()
+
+        if validate_time(new_time):
+            break
+
+    # Check doctor availability
+    if not doctor_slot_available(
+        appointment["doctor_name"],
+        new_date,
+        new_time,
+        exclude_id=appointment_id
+    ):
+        print("\nRescheduling failed.")
+        print("The doctor already has an appointment at this date and time.")
+        return
+
+    # Update appointment
+    appointment["date"] = new_date
+    appointment["time"] = new_time
+
+    print("\nAppointment rescheduled successfully!")
+
+
+def cancel_appointment():
+    """Cancel an existing appointment."""
+
+    print("\n========== CANCEL APPOINTMENT ==========")
+
+    if not appointments:
+        print("No appointments available to cancel.")
+        return
+
+    appointment_id = input("Enter appointment ID: ").strip().upper()
+
+    if appointment_id not in appointments:
+        print("Error: Appointment ID not found.")
+        return
+
+    appointment = appointments[appointment_id]
+
+    print("\nAppointment Details")
+    print("--------------------------------------")
+    print(f"Patient : {appointment['patient_name']}")
+    print(f"Doctor  : {appointment['doctor_name']}")
+    print(f"Date    : {appointment['date']}")
+    print(f"Time    : {appointment['time']}")
+
+    confirmation = input("\nAre you sure you want to cancel? (Y/N): ").strip().upper()
+
+    if confirmation == "Y":
+        del appointments[appointment_id]
+        print("\nAppointment cancelled successfully.")
+    else:
+        print("\nCancellation aborted.")
+
+
+def display_menu():
+    """Display the main menu."""
+
+    print("\n")
+    print("==============================================")
+    print("       HOSPITAL APPOINTMENT SCHEDULER")
+    print("==============================================")
+    print("1. Book Appointment")
+    print("2. View Appointments")
+    print("3. Reschedule Appointment")
+    print("4. Cancel Appointment")
+    print("5. Exit")
+    print("==============================================")
+
+
+def main():
+    """Main program."""
+
+    print("\nWelcome to Hospital Appointment Scheduler")
+
+    while True:
+
+        display_menu()
+
+        choice = input("Enter your choice (1-5): ").strip()
+
+        if choice == "1":
+            book_appointment()
+
+        elif choice == "2":
+            view_appointments()
+
+        elif choice == "3":
+            reschedule_appointment()
+
+        elif choice == "4":
+            cancel_appointment()
+
+        elif choice == "5":
+            print("\nThank you for using Hospital Appointment Scheduler.")
+            print("Goodbye!")
+            break
+
+        else:
+            print("\nInvalid choice.")
+            print("Please enter a number between 1 and 5.")
+
+
+# Start the program
+if __name__ == "__main__":
+    main()
