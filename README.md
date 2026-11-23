@@ -72,7 +72,6 @@ Add screenshots of your project here.
 
 ![Appointment Dashboard](screenshots/dashboard.png)
 
-> Replace the screenshot paths with the actual images from your repository.
 
 ## 🧰 Technologies Used
 
